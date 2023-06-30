@@ -1,71 +1,110 @@
 import { SerialPort } from 'serialport';
-import { Frame, Protocol } from './Protocol';
+import { Protocol } from './Protocol';
+import { Clusters, MessageType } from './Cluster';
+import { Messages } from './Messages';
+import { Message } from './Message';
 
-export class SerialPortBLE {
+export class SerialPortBluetooth extends Messages {
     portName: string;
     baudRate: number;
     port: SerialPort | null;
     buffer: string;
 
-    constructor(portName: string, baudRate = 115200) {
+    public callbackRead: ((data: Message) => void) | undefined;
+
+    public constructor(portName: string, baudRate = 115200) {
+        super();
         this.portName = portName;
         this.baudRate = baudRate;
         this.port = null;
         this.buffer = '';
-    }
-
-    connect() {
-        this.port = new SerialPort({ path: this.portName, baudRate: this.baudRate });
-
-        this.port.on('open', () => {
-            console.log(`Connexion établie sur le port ${this.portName}`);
-        });
-
-        this.port.on('data', (data) => {
-            this.buffer += data.toString();
-            if (this.buffer.substring(this.buffer.length - 1) === ">") {
-                console.log('Reception des données :', this.buffer);
-                for (let index = 0; index < this.buffer.split('>').length; index++) {
-                    let frame: Frame = Protocol.decode(this.buffer.split('>')[index] + '>');
-                    if (frame) {
-                        if (this.handleData) {
-                            this.handleData(frame);
-                        }
-                        this.buffer = '';
-                    }
+        new Clusters();
+        setInterval(() => {
+            if (!this.isWaiting()) {
+                let message: Message = this.getCurrent();
+                if (message) {
+                    this.doAction();
+                    this.write(message);
                 }
             }
-
-
-        });
-
-        this.port.on('error', (err) => {
-            console.error('Erreur de communication :', err.message);
-        });
+        }, 10);
     }
 
-    read(callback: (data: Frame) => void) {
-        this.handleData = callback;
-    }
-
-    write(data: string) {
+    public connect(callback: (success: boolean) => void) {
         if (!this.port) {
-            console.error('Le port série n\'est pas connecté.');
-            return;
+            this.port = new SerialPort({ path: this.portName, baudRate: this.baudRate });
+
+            this.port.on('open', () => {
+                if (callback) {
+                    callback(true);
+                }
+            });
+
+            this.port.on('data', (data) => {
+                this.buffer += data.toString();
+
+                const startMarker = "<";
+                const endMarker = ">";
+                const frames = this.buffer.split(endMarker);
+                if (this.buffer.endsWith(endMarker)) {
+                    frames.pop();
+
+                    for (const frameData of frames) {
+                        if (frameData.startsWith(startMarker)) {
+                            const frame: Message = Protocol.decode(frameData + endMarker);
+                            if (frame) {
+                                console.log("<= " + frame.toString());
+                                const sentMessage = this.getCurrent();
+                                if (sentMessage && sentMessage.callback) {
+                                    sentMessage.callback(frame);
+                                    if (frame.type !== MessageType.CLUSTER) {
+                                        this.actionDone();
+                                        this.dequeue();
+                                    }
+                                }
+                                else {
+                                    console.error('ffff')
+                                }
+                                if (this.callbackRead) {
+                                    this.callbackRead(frame);
+                                }
+                                this.buffer = this.buffer.substring((frameData + endMarker).length);
+                            }
+                            else {
+                                console.error('Erreur de split de trame !');
+                            }
+                        }
+                        else {
+                            this.buffer = this.buffer.substring((frameData + endMarker).length);
+                        }
+                    }
+                }
+            });
+
+            this.port.on('error', (err) => {
+                if (callback) {
+                    callback(false);
+                }
+            });
         }
-
-        this.port.write(data, (err) => {
-            if (err) {
-                console.error('Erreur lors de l\'écriture des données :', err.message);
-            } else {
-                console.log('Ecriture des données :', data);
+        else {
+            if (this.port.isOpen) {
+                callback(true);
             }
-        });
+        }
     }
 
-    disconnect() {
+    public read(callback: (data: Message) => void) {
+        this.callbackRead = callback;
+    }
+
+    public sendMessage(message: Message, callback: (data: Message) => void) {
+        message.callback = callback;
+        this.enqueue(message);
+    }
+
+    public disconnect() {
         if (!this.port) {
-            console.error('Le port série n\'est pas connecté.');
             return;
         }
 
@@ -79,5 +118,17 @@ export class SerialPortBLE {
         });
     }
 
-    handleData: ((data: Frame) => void) | undefined;
+    private write(message: Message) {
+        if (!this.port) {
+            return;
+        }
+
+        this.port.write(Protocol.encode(message), (err) => {
+            if (err) {
+                console.error('Erreur lors de l\'écriture des données :', err.message);
+            } else {
+                console.log('=> ' + message.toString());
+            }
+        });
+    }
 }

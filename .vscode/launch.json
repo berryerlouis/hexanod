@@ -5,7 +5,7 @@
             "type": "node",
             "request": "launch",
             "name": "Start and Debug",
-            "preLaunchTask": "nb-tsc-watch",
+            "preLaunchTask": "tsc-watch",
             "timeout": 10000,
             "program": "${workspaceFolder}/src/index.ts",
             "restart": true,

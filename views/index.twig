@@ -1,0 +1,27 @@
+{% extends './layout/base.twig' %}
+
+{% block title %}
+	Hexanod
+{% endblock %}
+
+{% block page %}
+	Hexanod
+{% endblock %}
+
+{% block stylesheet %}
+	{{ parent() }}
+{% endblock %}
+
+{% block javascript %}
+	{{ parent() }}
+	<script defer src="js/test.js" type="module"></script>
+
+{% endblock %}
+
+
+{% block container %}
+	<button id="myButton">Cliquez ici</button>
+	<div class="fixed-bottom content">
+		<textarea class="form-control" id="mytext" rows="3"></textarea>
+	</div>
+{% endblock %}

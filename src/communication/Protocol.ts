@@ -1,13 +1,5 @@
-import { Command, Cluster, FrameType } from "./Cluster";
-
-
-export class Frame {
-    type?: string;
-    cluster?: string;
-    cmd?: string;
-    size?: number;
-    params?: Array<string>;
-}
+import { MessageType, Clusters } from "./Cluster";
+import { Message } from "./Message";
 
 export class Protocol {
 
@@ -18,41 +10,42 @@ export class Protocol {
     constructor() {
     }
 
-    public static encode(cluster: Cluster, cmd: Command, size?: number, params?: Array<string>): string {
-        return '<' + this.HEADER + cluster + cmd + (!size ? '00' : size) + '>';
+
+    public static encode(message: Message): string {
+        let messageToEncode = '<' + this.HEADER;
+        messageToEncode += message.cluster.code;
+        messageToEncode += message.command.code;
+        messageToEncode += (!message.size ? '00' : message.size);
+        if (message.params) {
+            for (let param in message.params) {
+                messageToEncode += param;
+            }
+        }
+        messageToEncode += '>';
+        return messageToEncode;
     }
 
-    public static decode(data: string): Frame | undefined {
+    public static decode(data: string): Message | undefined {
         if (data.substring(0, 1) === "<" && data.substring(data.length - 1) === ">") {
             data = data.substring(1);
-            data = data.substring(data.length - 1, 1);
+            data = data.substring(0, data.length - 1);
 
-            let frame: Frame = new Frame();
+            let frame: Message = new Message();
 
             if (data === this.NO_ERROR) {
-                frame.type = FrameType.ACK;
+                frame.type = MessageType.ACK;
             }
             else if (data.substring(0, 2) === this.NO_ERROR) {
-                frame.type = FrameType.NACK;
-                console.error('Erreur de trame : ' + data.substring(2));
+                frame.type = MessageType.NACK;
             }
             else {
-                frame.type = FrameType.CLUSTER;
-                for (const cluster in Cluster) {
-                    if (Cluster[cluster] === data.substring(0, 2)) {
-                        data = data.substring(2);
-                        frame.cluster = cluster;
-                        break;
-                    }
-                };
-                for (const cmd in Command) {
-                    if (Command[cmd] === data.substring(0, 2)) {
-                        data = data.substring(2);
-                        frame.cmd = cmd;
-                        break;
-                    }
-                };
-                frame.size = parseInt(data.substring(0, 2));
+                frame.type = MessageType.CLUSTER;
+                data = data.substring(1);
+                frame.cluster = Clusters.findClusterByCode(data.substring(0, 2));
+                data = data.substring(2);
+                frame.command = Clusters.findCommandByCode(frame.cluster, data.substring(0, 2));
+                data = data.substring(2);
+                frame.size = parseInt(data.substring(0, 2), 16);
                 data = data.substring(2);
 
                 if (frame.size > 0) {
