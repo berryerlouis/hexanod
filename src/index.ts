@@ -5,6 +5,8 @@ import Hexapod from "./hexapod";
 import { Server } from 'socket.io';
 require('log-timestamp');
 
+
+
 dotenv.config();
 const hexapod = new Hexapod();
 
@@ -31,7 +33,6 @@ app.get('/', function (req, res) {
 server.listen(PORT, HOST, () => {
     console.log(`Running on http://${HOST}:${PORT}`);
 });
-
 
 io.on('connection', (socket) => {
     console.log('Un client est connecté');

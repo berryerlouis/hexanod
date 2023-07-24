@@ -5,7 +5,7 @@
   "main": "index.ts",
   "scripts": {
     "build": "tsc",
-    "start": "tsc && node ./build/index.js"
+    "start": "tsc-watch ./tsconfig.json --onSuccess \"node ./build/index.js\""
   },
   "author": "Louis BERRYER <louisberryer@gmail.com>",
   "license": "ISC",
@@ -23,6 +23,7 @@
     "@types/node": "^20.3.2",
     "@types/twig": "^1.12.9",
     "ts-node": "^10.9.1",
+    "tsc-watch": "^6.0.4",
     "typescript": "^5.1.5"
   }
 }

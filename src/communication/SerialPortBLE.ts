@@ -91,6 +91,9 @@ export class SerialPortBluetooth extends Messages {
             if (this.port.isOpen) {
                 callback(true);
             }
+            else {
+                this.port.open();
+            }
         }
     }
 

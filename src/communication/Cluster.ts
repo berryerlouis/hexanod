@@ -162,8 +162,6 @@ export class Command {
     }
 }
 
-
-
 export enum MessageType {
     ACK = 'ACK',
     NACK = 'NACK',

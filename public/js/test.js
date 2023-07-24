@@ -1,6 +1,8 @@
-import Message from './Message.js';
+import { Message, MessageType, Cluster, ClusterGeneral } from './Message.js';
+import { Console } from './Console.js';
 
 const socket = io();
+const console = new Console('console')
 
 $('#myButton').click(function (e) {
     socket.emit('buttonClick');
@@ -8,10 +10,19 @@ $('#myButton').click(function (e) {
 
 
 socket.on('messageApp', (message) => {
-    $('#mytext').val(message + '\n' + $('#mytext').val());
+    $('#console').val(message + '\n' + $('#console').val());
 });
 
 socket.on('messageHexapod', (message) => {
-    let mes = new Message(message);
-    $('#mytext').val(message.type + '\n' + $('#mytext').val());
+    console.addMessage(message);
+    if (message.type === MessageType.CLUSTER) {
+        if (message.cluster.name === Cluster.GENERAL) {
+            if (message.command.name === ClusterGeneral.VERSION) {
+                $('#hexanod-version').text(message.params[0] + '.' + message.params[1]);
+            }
+        }
+    }
+    else {
+
+    }
 });
